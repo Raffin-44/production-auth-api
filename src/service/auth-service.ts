@@ -17,7 +17,7 @@ export const createUserService = async (email: string , password: string ) => {
     })
 
     if(user){
-        return {error : "email Exists"}
+        return {error : "email is already registered"}
     }
     
     const saltRounds = 12;
@@ -37,9 +37,22 @@ export const createUserService = async (email: string , password: string ) => {
 }
 
 export const loginUserService = async (email: string , password: string): Promise<boolean> => {
-    const mockDbHash = "$2b$12$GfwYLbeWDZ7fN7xrl7rCF.AnEFiHa1MBIzbvFiiD94u.HdwIEmHti";
+    const user = await prisma.user.findUnique({
+        where : {
+            email : email
+        }
+    })
 
-    const ismatch = await bcrypt.compare(password, mockDbHash);
+    if(!user){
+        return false
+    }
 
-    return ismatch;
+    const ismatch = await bcrypt.compare(password, user.password)
+
+    if(!ismatch){
+        return false;
+    }
+
+    return true;
+
 }
