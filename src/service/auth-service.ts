@@ -2,6 +2,7 @@ import bcrypt from "bcrypt"
 import { PrismaClient } from "../generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
+import jwt from 'jsonwebtoken'
 
 const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString});
@@ -36,7 +37,7 @@ export const createUserService = async (email: string , password: string ) => {
     }
 }
 
-export const loginUserService = async (email: string , password: string): Promise<boolean> => {
+export const loginUserService = async (email: string , password: string): Promise<{ accessToken: string, refreshToken: string} | null> => {
     const user = await prisma.user.findUnique({
         where : {
             email : email
@@ -44,15 +45,29 @@ export const loginUserService = async (email: string , password: string): Promis
     })
 
     if(!user){
-        return false
+        return null
     }
 
     const ismatch = await bcrypt.compare(password, user.password)
 
     if(!ismatch){
-        return false;
+        return null;
     }
 
-    return true;
+    const payload = {userId: user.id, email: user.email};
+    const accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m'})
+    const refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET!, { expiresIn: '7d'})
+
+    // Update Refresh Token เก็บไว้ใน DB 
+    await prisma.user.update({ 
+        where : {
+            id : user.id
+        },
+        data : {
+            refreshToken : refreshToken
+        }
+    });
+
+    return {accessToken, refreshToken};
 
 }

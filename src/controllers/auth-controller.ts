@@ -48,7 +48,7 @@ export const loginUser = async (req: Request, res: Response) => {
             });
         }else{
             return res.status(200).json({
-                mesaage : " Login Successfully!"
+                mesaage : " Login Successfully!", token: loginResult
             })
         }
 
