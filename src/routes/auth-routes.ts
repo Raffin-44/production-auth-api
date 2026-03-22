@@ -1,5 +1,6 @@
 import express from "express"
 import { loginUser, registerUser } from "../controllers/auth-controller";
+import { authMiddleware } from "../middlewares/auth-middleware";
 
 const router = express.Router();
 
@@ -13,5 +14,7 @@ router.get("/health", (req, res) => {
 router.post("/register", registerUser) 
 
 router.post("/login", loginUser);
+
+router.get("/profile", authMiddleware);
 
 export default router
