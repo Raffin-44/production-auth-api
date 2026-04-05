@@ -1,5 +1,5 @@
 import {Request, Response} from "express"
-import { createUserService, loginUserService } from "../service/auth-service";
+import { createUserService, loginUserService, refreshTokenService } from "../service/auth-service";
 
 export const registerUser = async (req: Request, res: Response) => {
     try{
@@ -59,4 +59,30 @@ export const loginUser = async (req: Request, res: Response) => {
         });
     }
 
+}
+
+export const refreshToken = async (req: Request, res: Response) => {
+    try {
+        const {token} = req.body;
+        if(!token){
+            return res.status(401).json({
+                message: "No Refresh Token Provide!"
+            })
+        }
+
+        const refreshTokenResult = await refreshTokenService(token)
+
+        if(refreshTokenResult){
+            res.json({
+                message: "Refresh Token Success!",
+                accessToken: refreshTokenResult
+            });
+        }
+
+    } catch (error) {
+        console.log("Refresh Token Error:", error);
+        res.status(403).json({
+            message: "Invalid or Expired Refresh Token"
+        });
+    }
 }

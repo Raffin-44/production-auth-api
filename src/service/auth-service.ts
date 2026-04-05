@@ -71,3 +71,27 @@ export const loginUserService = async (email: string , password: string): Promis
     return {accessToken, refreshToken};
 
 }
+
+
+export const refreshTokenService = async (refreshToken: string) => {
+    const Refreshtoken = await prisma.user.findFirst({ 
+        where: {
+            refreshToken : refreshToken
+        }
+    })
+
+    if(!Refreshtoken){
+       throw new Error('Refresh token Invalid')
+    }
+
+    const ValidToken = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as any;
+
+    const payloadForNewToken = {
+        id: ValidToken.id
+    };
+
+    const newAccessToken = jwt.sign(payloadForNewToken, process.env.ACCESS_TOKEN_SECRET!, {expiresIn: '15m'});
+
+    return newAccessToken;
+
+}
