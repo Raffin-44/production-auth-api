@@ -38,7 +38,7 @@ export const createUserService = async (email: string , password: string ) => {
     }
 }
 
-export const loginUserService = async (email: string , password: string): Promise<{ accessToken: string, refreshToken: string} | null> => {
+export const loginUserService = async (email: string , password: string) :Promise<{ accessToken: string, refreshToken: string}> => {
     const user = await prisma.user.findUnique({
         where : {
             email : email
@@ -46,13 +46,13 @@ export const loginUserService = async (email: string , password: string): Promis
     })
 
     if(!user){
-        return null
+        throw new Error ('Invalid email or password!'); 
     }
 
     const ismatch = await bcrypt.compare(password, user.password)
 
     if(!ismatch){
-        return null;
+        throw new Error ('Invalid email or passwprd!')
     }
 
     const payload = {userId: user.id, email: user.email};
@@ -105,7 +105,7 @@ export const logoutService = async (refreshToken: string) => {
     })
 
     if(!user){
-        throw error ("Invalid or Expired Refresh Token");
+        throw new Error ('Invalid or Expired Refresh Token');
     }
 
     await prisma.user.update({

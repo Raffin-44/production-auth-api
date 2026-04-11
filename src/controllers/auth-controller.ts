@@ -40,20 +40,28 @@ export const loginUser = async (req: Request, res: Response) => {
             });
         }
 
-        const loginResult = await loginUserService(email, password)
+        const { accessToken, refreshToken } = await loginUserService(email, password)
 
-        if(!loginResult){
-            return res.status(400).json({
-                message : "Invalid email or password"
-            });
-        }else{
-            return res.status(200).json({
-                mesaage : " Login Successfully!", token: loginResult
+            res.cookie('secure-cookie-jwt', refreshToken, {
+                httpOnly: true,
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+                // secure: true 
             })
-        }
 
+            return res.status(200).json({
+                mesaage : " Login Successfully!", accesstoken: accessToken
+            })
+        
     }catch(error){
         console.log("Error in LoginUser", error);
+        
+        if(error instanceof Error) {
+            return res.status(401).json({
+                message: error.message
+            });
+        }
+        
         return res.status(500).json({
             message : "Internal Server Error"
         });
@@ -63,7 +71,8 @@ export const loginUser = async (req: Request, res: Response) => {
 
 export const refreshToken = async (req: Request, res: Response) => {
     try {
-        const {token} = req.body;
+        const token = req.cookies['secure-cookie-jwt'];
+
         if(!token){
             return res.status(401).json({
                 message: "No Refresh Token Provide!"
@@ -89,7 +98,8 @@ export const refreshToken = async (req: Request, res: Response) => {
 
 export const logoutUser = async (req: Request, res: Response) => {
     try {
-        const {refreshToken} = req.body;
+        const refreshToken = req.cookies['secure-cookie-jwt'];
+        
         if(!refreshToken){
             return res.status(401).json({
                 message: "No Refresh Token provided"
@@ -97,6 +107,8 @@ export const logoutUser = async (req: Request, res: Response) => {
         }
 
         await logoutService(refreshToken)
+
+        res.clearCookie('secure-cookie-jwt');
 
         return res.status(200).json({
             message: "Logout Success!"
