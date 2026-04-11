@@ -1,5 +1,5 @@
 import {Request, Response} from "express"
-import { createUserService, loginUserService, refreshTokenService } from "../service/auth-service";
+import { createUserService, loginUserService, refreshTokenService, logoutService } from "../service/auth-service";
 
 export const registerUser = async (req: Request, res: Response) => {
     try{
@@ -83,6 +83,37 @@ export const refreshToken = async (req: Request, res: Response) => {
         console.log("Refresh Token Error:", error);
         res.status(403).json({
             message: "Invalid or Expired Refresh Token"
+        });
+    }
+}
+
+export const logoutUser = async (req: Request, res: Response) => {
+    try {
+        const {refreshToken} = req.body;
+        if(!refreshToken){
+            return res.status(401).json({
+                message: "No Refresh Token provided"
+            });
+        }
+
+        await logoutService(refreshToken)
+
+        return res.status(200).json({
+            message: "Logout Success!"
+        });
+        
+    } catch (error) {
+        console.log("Logout User Erorr:", error);
+
+        // เปิดดูข้อความ error ที่ Service ส่งมา
+        if(error instanceof Error) {
+            return res.status(401).json({
+                message: error.message
+            });
+        }
+
+        res.status(401).json({
+            message: "Internal Server Error"
         });
     }
 }

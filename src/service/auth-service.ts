@@ -3,6 +3,7 @@ import { PrismaClient } from "../generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
 import jwt from 'jsonwebtoken'
+import { error } from "node:console"
 
 const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString});
@@ -94,4 +95,25 @@ export const refreshTokenService = async (refreshToken: string) => {
 
     return newAccessToken;
 
+}
+
+export const logoutService = async (refreshToken: string) => {
+    const user = await prisma.user.findFirst({
+        where : {
+            refreshToken : refreshToken
+        }
+    })
+
+    if(!user){
+        throw error ("Invalid or Expired Refresh Token");
+    }
+
+    await prisma.user.update({
+        where: {
+            id: user.id
+        },
+        data: {
+            refreshToken: null
+        }
+    });
 }
