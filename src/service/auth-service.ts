@@ -2,6 +2,8 @@ import bcrypt from "bcrypt"
 import { PrismaClient } from "../generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
+import jwt from 'jsonwebtoken'
+import { error } from "node:console"
 
 const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString});
@@ -17,7 +19,7 @@ export const createUserService = async (email: string , password: string ) => {
     })
 
     if(user){
-        return {error : "email Exists"}
+        return {error : "email is already registered"}
     }
     
     const saltRounds = 12;
@@ -36,10 +38,82 @@ export const createUserService = async (email: string , password: string ) => {
     }
 }
 
-export const loginUserService = async (email: string , password: string): Promise<boolean> => {
-    const mockDbHash = "$2b$12$GfwYLbeWDZ7fN7xrl7rCF.AnEFiHa1MBIzbvFiiD94u.HdwIEmHti";
+export const loginUserService = async (email: string , password: string): Promise<{ accessToken: string, refreshToken: string} | null> => {
+    const user = await prisma.user.findUnique({
+        where : {
+            email : email
+        }
+    })
 
-    const ismatch = await bcrypt.compare(password, mockDbHash);
+    if(!user){
+        return null
+    }
 
-    return ismatch;
+    const ismatch = await bcrypt.compare(password, user.password)
+
+    if(!ismatch){
+        return null;
+    }
+
+    const payload = {userId: user.id, email: user.email};
+    const accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: '15m'})
+    const refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET!, { expiresIn: '7d'})
+
+    // Update Refresh Token เก็บไว้ใน DB 
+    await prisma.user.update({ 
+        where : {
+            id : user.id
+        },
+        data : {
+            refreshToken : refreshToken
+        }
+    });
+
+    return {accessToken, refreshToken};
+
+}
+
+
+export const refreshTokenService = async (refreshToken: string) => {
+    const Refreshtoken = await prisma.user.findFirst({ 
+        where: {
+            refreshToken : refreshToken
+        }
+    })
+
+    if(!Refreshtoken){
+       throw new Error('Refresh token Invalid')
+    }
+
+    const ValidToken = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as any;
+
+    const payloadForNewToken = {
+        id: ValidToken.id
+    };
+
+    const newAccessToken = jwt.sign(payloadForNewToken, process.env.ACCESS_TOKEN_SECRET!, {expiresIn: '15m'});
+
+    return newAccessToken;
+
+}
+
+export const logoutService = async (refreshToken: string) => {
+    const user = await prisma.user.findFirst({
+        where : {
+            refreshToken : refreshToken
+        }
+    })
+
+    if(!user){
+        throw error ("Invalid or Expired Refresh Token");
+    }
+
+    await prisma.user.update({
+        where: {
+            id: user.id
+        },
+        data: {
+            refreshToken: null
+        }
+    });
 }

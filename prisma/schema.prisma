@@ -18,4 +18,5 @@ model User {
   email     String  @unique              // ห้ามซ้ำ
   password  String                       // เก็บ Hash
   createdAt DateTime @default(now())     // วันที่สมัคร
+  refreshToken   String?                 // เก็บค่า บัตรผ่าน VIP      
 }
